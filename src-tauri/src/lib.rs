@@ -1,14 +1,46 @@
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
+mod ai;
+mod commands;
+mod db;
+mod error;
+mod export;
+mod photos;
+
+use commands::{property, settings};
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .setup(|app| {
+            let app_data_dir = app
+                .path()
+                .app_data_dir()
+                .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+
+            let db_path = app_data_dir.join("realestate.db");
+
+            let pool = tauri::async_runtime::block_on(async {
+                db::init_pool(&db_path).await
+            })
+            .map_err(|e| format!("Failed to initialize database: {}", e))?;
+
+            app.manage(pool);
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            property::create_property,
+            property::get_property,
+            property::list_properties,
+            property::update_property,
+            property::delete_property,
+            settings::get_setting,
+            settings::set_setting,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
