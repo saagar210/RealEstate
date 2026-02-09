@@ -102,3 +102,17 @@ export const exportDocx = (propertyId: string, listingIds: string[]) =>
 
 export const copyToClipboard = (text: string) =>
   invoke<void>("copy_to_clipboard", { text });
+
+// License commands
+export interface LicenseStatus {
+  isValid: boolean;
+  licenseKey: string;
+  validatedAt: string;
+  error: string | null;
+}
+
+export const validateLicenseKey = (licenseKey: string) =>
+  invoke<LicenseStatus>("validate_license_key", { licenseKey });
+
+export const checkLicense = () =>
+  invoke<LicenseStatus>("check_license");
