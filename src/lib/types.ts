@@ -74,8 +74,8 @@ export interface BrandVoice {
   id: string;
   name: string;
   description: string | null;
-  extractedStyle: ExtractedStyle;
-  sourceListings: string[];
+  extractedStyle: string; // JSON string, parse with parseExtractedStyle()
+  sourceListings: string; // JSON string array
   sampleCount: number;
   createdAt: string;
   updatedAt: string;

@@ -5,7 +5,10 @@ mod error;
 mod export;
 mod photos;
 
-use commands::{export as export_commands, generate, photos as photo_commands, property, settings};
+use commands::{
+    brand_voice as brand_voice_commands, export as export_commands, generate,
+    photos as photo_commands, property, settings,
+};
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -53,6 +56,9 @@ pub fn run() {
             export_commands::export_pdf,
             export_commands::export_docx,
             export_commands::copy_to_clipboard,
+            brand_voice_commands::create_brand_voice,
+            brand_voice_commands::list_brand_voices,
+            brand_voice_commands::delete_brand_voice,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
