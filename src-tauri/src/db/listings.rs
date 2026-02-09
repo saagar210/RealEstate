@@ -1,7 +1,15 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 use sqlx::{FromRow, Row, SqlitePool};
 
 use crate::error::AppError;
+
+fn serialize_json_array<S>(value: &str, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let arr: Vec<String> = serde_json::from_str(value).unwrap_or_default();
+    arr.serialize(serializer)
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 #[serde(rename_all = "camelCase")]
@@ -13,6 +21,7 @@ pub struct Listing {
     pub style: Option<String>,
     pub tone: Option<String>,
     pub length: Option<String>,
+    #[serde(serialize_with = "serialize_json_array")]
     pub seo_keywords: String,
     pub brand_voice_id: Option<String>,
     pub tokens_used: i64,

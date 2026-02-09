@@ -1,7 +1,16 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 use sqlx::{FromRow, SqlitePool};
 
 use crate::error::AppError;
+
+/// Serialize a JSON string column as a proper JSON array
+fn serialize_json_array<S>(value: &str, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let arr: Vec<String> = serde_json::from_str(value).unwrap_or_default();
+    arr.serialize(serializer)
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 #[serde(rename_all = "camelCase")]
@@ -19,10 +28,13 @@ pub struct Property {
     pub year_built: Option<i64>,
     pub lot_size: Option<String>,
     pub parking: Option<String>,
+    #[serde(serialize_with = "serialize_json_array")]
     pub key_features: String,
     pub neighborhood: Option<String>,
+    #[serde(serialize_with = "serialize_json_array")]
     pub neighborhood_highlights: String,
     pub school_district: Option<String>,
+    #[serde(serialize_with = "serialize_json_array")]
     pub nearby_amenities: String,
     pub agent_notes: Option<String>,
     pub created_at: String,

@@ -11,6 +11,7 @@ import { EmailCampaign } from "@/pages/EmailCampaign";
 import { BrandVoice } from "@/pages/BrandVoice";
 import { Settings } from "@/pages/Settings";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 
 function ApiKeyCheck() {
   const { isLoaded, apiKey, loadSettings } = useSettingsStore();
@@ -34,6 +35,11 @@ function ApiKeyCheck() {
   return null;
 }
 
+function KeyboardShortcuts() {
+  useKeyboardShortcuts();
+  return null;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -41,6 +47,7 @@ export default function App() {
         <Sidebar />
         <main className="flex-1 overflow-y-auto p-6">
           <ApiKeyCheck />
+          <KeyboardShortcuts />
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/property/new" element={<NewProperty />} />
