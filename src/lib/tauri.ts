@@ -4,7 +4,6 @@ import type {
   CreatePropertyInput,
   Listing,
   BrandVoice,
-  GenerationOptions,
   SocialGenerationOptions,
   EmailGenerationOptions,
   Photo,
@@ -30,19 +29,25 @@ export const deleteProperty = (id: string) =>
 export const listListings = (propertyId: string) =>
   invoke<Listing[]>("list_listings", { propertyId });
 
-export const toggleFavorite = (id: string) =>
-  invoke<void>("toggle_favorite", { id });
+export const toggleListingFavorite = (id: string) =>
+  invoke<void>("toggle_listing_favorite", { id });
 
 export const deleteListing = (id: string) =>
   invoke<void>("delete_listing", { id });
 
 // Generation commands (streaming via Channel)
 export const generateListing = (
-  propertyId: string,
-  options: GenerationOptions,
+  args: {
+    propertyId: string;
+    style: string;
+    tone: string;
+    length: string;
+    seoKeywords: string[];
+    brandVoiceId: string | null;
+  },
   onEvent: unknown
 ) =>
-  invoke<void>("generate_listing", { propertyId, options, onEvent });
+  invoke<void>("generate_listing", { args, onEvent });
 
 export const generateSocial = (
   propertyId: string,

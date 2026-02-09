@@ -57,6 +57,17 @@ export const EMAIL_TEMPLATES = [
   { value: "open_house", label: "Open House", description: "Invite buyers to an open house event" },
 ] as const;
 
+export const SETTING_KEYS = {
+  API_KEY: "api_key",
+  AGENT_NAME: "agent_name",
+  AGENT_PHONE: "agent_phone",
+  AGENT_EMAIL: "agent_email",
+  BROKERAGE_NAME: "brokerage_name",
+  DEFAULT_STYLE: "default_style",
+  DEFAULT_TONE: "default_tone",
+  DEFAULT_LENGTH: "default_length",
+} as const;
+
 export const MAX_PHOTOS = 20;
 export const MAX_PHOTO_SIZE_MB = 10;
 export const MAX_PHOTO_SIZE_BYTES = MAX_PHOTO_SIZE_MB * 1024 * 1024;

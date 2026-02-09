@@ -5,7 +5,7 @@ mod error;
 mod export;
 mod photos;
 
-use commands::{property, settings};
+use commands::{generate, property, settings};
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -40,6 +40,10 @@ pub fn run() {
             property::delete_property,
             settings::get_setting,
             settings::set_setting,
+            generate::generate_listing,
+            generate::list_listings,
+            generate::toggle_listing_favorite,
+            generate::delete_listing,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
