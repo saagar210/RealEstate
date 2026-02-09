@@ -4,8 +4,6 @@ import type {
   CreatePropertyInput,
   Listing,
   BrandVoice,
-  SocialGenerationOptions,
-  EmailGenerationOptions,
   Photo,
 } from "./types";
 
@@ -50,18 +48,16 @@ export const generateListing = (
   invoke<void>("generate_listing", { args, onEvent });
 
 export const generateSocial = (
-  propertyId: string,
-  options: SocialGenerationOptions,
+  args: { propertyId: string; platform: string; brandVoiceId: string | null },
   onEvent: unknown
 ) =>
-  invoke<void>("generate_social", { propertyId, options, onEvent });
+  invoke<void>("generate_social", { args, onEvent });
 
 export const generateEmail = (
-  propertyId: string,
-  options: EmailGenerationOptions,
+  args: { propertyId: string; templateType: string; brandVoiceId: string | null },
   onEvent: unknown
 ) =>
-  invoke<void>("generate_email", { propertyId, options, onEvent });
+  invoke<void>("generate_email", { args, onEvent });
 
 // Photo commands
 export const importPhotos = (propertyId: string) =>
@@ -99,10 +95,10 @@ export const setSetting = (key: string, value: string) =>
 
 // Export commands
 export const exportPdf = (propertyId: string, listingIds: string[]) =>
-  invoke<void>("export_pdf", { propertyId, listingIds });
+  invoke<number[]>("export_pdf", { propertyId, listingIds });
 
 export const exportDocx = (propertyId: string, listingIds: string[]) =>
-  invoke<void>("export_docx", { propertyId, listingIds });
+  invoke<number[]>("export_docx", { propertyId, listingIds });
 
 export const copyToClipboard = (text: string) =>
   invoke<void>("copy_to_clipboard", { text });

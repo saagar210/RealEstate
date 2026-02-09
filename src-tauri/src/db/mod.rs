@@ -1,5 +1,6 @@
 pub mod brand_voice;
 pub mod listings;
+pub mod photos;
 pub mod properties;
 pub mod settings;
 

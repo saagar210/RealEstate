@@ -4,7 +4,9 @@ use tauri::ipc::Channel;
 use tauri::State;
 
 use crate::ai::client::{ClaudeClient, StreamEvent};
+use crate::ai::email_generator;
 use crate::ai::listing_generator;
+use crate::ai::social_generator;
 use crate::ai::prompts::{AgentInfo, GenerationOptions};
 use crate::db::{brand_voice, listings, properties, settings};
 use crate::error::AppError;
@@ -95,6 +97,83 @@ pub async fn generate_listing(
     Ok(())
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GenerateSocialArgs {
+    pub property_id: String,
+    pub platform: String,
+    pub brand_voice_id: Option<String>,
+}
+
+#[tauri::command]
+pub async fn generate_social(
+    db: State<'_, SqlitePool>,
+    args: GenerateSocialArgs,
+    on_event: Channel<StreamEvent>,
+) -> Result<(), AppError> {
+    // Load property
+    let property = properties::get(&db, &args.property_id).await?;
+
+    // Load API key
+    let api_key = settings::get(&db, "api_key").await?;
+    if api_key.is_empty() {
+        return Err(AppError::Config(
+            "No API key configured. Add your Anthropic API key in Settings.".to_string(),
+        ));
+    }
+
+    // Load agent info
+    let agent_info = AgentInfo {
+        name: settings::get(&db, "agent_name").await.unwrap_or_default(),
+        phone: settings::get(&db, "agent_phone").await.unwrap_or_default(),
+        email: settings::get(&db, "agent_email").await.unwrap_or_default(),
+        brokerage: settings::get(&db, "brokerage_name")
+            .await
+            .unwrap_or_default(),
+    };
+
+    // Load brand voice if specified
+    let voice_block = if let Some(ref voice_id) = args.brand_voice_id {
+        let voice = brand_voice::get(&db, voice_id).await?;
+        crate::ai::prompts::build_voice_block(&voice.extracted_style)
+    } else {
+        None
+    };
+
+    let client = ClaudeClient::new(api_key);
+
+    let result = social_generator::generate_social_posts(
+        &client,
+        &property,
+        &args.platform,
+        voice_block.as_deref(),
+        &agent_info,
+        &on_event,
+    )
+    .await?;
+
+    // Save to database
+    let generation_type = format!("social_{}", args.platform);
+    listings::save(
+        &db,
+        listings::CreateListingInput {
+            property_id: args.property_id,
+            content: result.full_text,
+            generation_type,
+            style: None,
+            tone: None,
+            length: None,
+            seo_keywords: vec![],
+            brand_voice_id: args.brand_voice_id,
+            tokens_used: (result.input_tokens + result.output_tokens) as i64,
+            generation_cost_cents: result.cost_cents as i64,
+        },
+    )
+    .await?;
+
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn list_listings(
     db: State<'_, SqlitePool>,
@@ -114,4 +193,81 @@ pub async fn toggle_listing_favorite(
 #[tauri::command]
 pub async fn delete_listing(db: State<'_, SqlitePool>, id: String) -> Result<(), AppError> {
     listings::delete(&db, &id).await
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GenerateEmailArgs {
+    pub property_id: String,
+    pub template_type: String,
+    pub brand_voice_id: Option<String>,
+}
+
+#[tauri::command]
+pub async fn generate_email(
+    db: State<'_, SqlitePool>,
+    args: GenerateEmailArgs,
+    on_event: Channel<StreamEvent>,
+) -> Result<(), AppError> {
+    // Load property
+    let property = properties::get(&db, &args.property_id).await?;
+
+    // Load API key
+    let api_key = settings::get(&db, "api_key").await?;
+    if api_key.is_empty() {
+        return Err(AppError::Config(
+            "No API key configured. Add your Anthropic API key in Settings.".to_string(),
+        ));
+    }
+
+    // Load agent info
+    let agent_info = AgentInfo {
+        name: settings::get(&db, "agent_name").await.unwrap_or_default(),
+        phone: settings::get(&db, "agent_phone").await.unwrap_or_default(),
+        email: settings::get(&db, "agent_email").await.unwrap_or_default(),
+        brokerage: settings::get(&db, "brokerage_name")
+            .await
+            .unwrap_or_default(),
+    };
+
+    // Load brand voice if specified
+    let voice_block = if let Some(ref voice_id) = args.brand_voice_id {
+        let voice = brand_voice::get(&db, voice_id).await?;
+        crate::ai::prompts::build_voice_block(&voice.extracted_style)
+    } else {
+        None
+    };
+
+    let client = ClaudeClient::new(api_key);
+
+    let result = email_generator::generate_email(
+        &client,
+        &property,
+        &args.template_type,
+        voice_block.as_deref(),
+        &agent_info,
+        &on_event,
+    )
+    .await?;
+
+    // Save to database with generation_type = "email_{template_type}"
+    let generation_type = format!("email_{}", args.template_type);
+    listings::save(
+        &db,
+        listings::CreateListingInput {
+            property_id: args.property_id,
+            content: result.full_text,
+            generation_type,
+            style: None,
+            tone: None,
+            length: None,
+            seo_keywords: vec![],
+            brand_voice_id: args.brand_voice_id,
+            tokens_used: (result.input_tokens + result.output_tokens) as i64,
+            generation_cost_cents: result.cost_cents as i64,
+        },
+    )
+    .await?;
+
+    Ok(())
 }

@@ -16,7 +16,10 @@ import {
 import toast from "react-hot-toast";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PropertyForm } from "@/components/property/PropertyForm";
+import { PhotoUploader } from "@/components/property/PhotoUploader";
+import { PhotoGrid } from "@/components/property/PhotoGrid";
 import { usePropertyStore } from "@/stores/propertyStore";
+import { usePhotos } from "@/hooks/usePhotos";
 import { PROPERTY_TYPES } from "@/lib/constants";
 import * as tauri from "@/lib/tauri";
 import type { Property, CreatePropertyInput } from "@/lib/types";
@@ -61,6 +64,15 @@ export function PropertyDetail() {
   const navigate = useNavigate();
   const deleteProperty = usePropertyStore((s) => s.deleteProperty);
   const fetchProperties = usePropertyStore((s) => s.fetchProperties);
+
+  const {
+    photos,
+    isLoading: photosLoading,
+    isImporting,
+    error: photosError,
+    importPhotos: handleImportPhotos,
+    deletePhoto: handleDeletePhoto,
+  } = usePhotos(id);
 
   const [property, setProperty] = useState<Property | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -319,6 +331,33 @@ export function PropertyDetail() {
             )}
           </div>
         )}
+      </div>
+
+      {/* Photos Section */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">
+            Photos
+          </h2>
+          <span className="text-xs text-gray-500">
+            {photos.length} photo{photos.length !== 1 ? "s" : ""}
+          </span>
+        </div>
+        {photosError && (
+          <p className="text-sm text-red-600 mb-3">{photosError}</p>
+        )}
+        <PhotoGrid
+          photos={photos}
+          isLoading={photosLoading}
+          onDelete={handleDeletePhoto}
+        />
+        <div className={photos.length > 0 ? "mt-4" : ""}>
+          <PhotoUploader
+            photoCount={photos.length}
+            isImporting={isImporting}
+            onImport={handleImportPhotos}
+          />
+        </div>
       </div>
 
       {/* Tab navigation */}
