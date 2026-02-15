@@ -3,11 +3,13 @@ mod commands;
 mod db;
 mod error;
 mod export;
+mod import;
 mod license;
 mod photos;
 
 use commands::{
-    brand_voice as brand_voice_commands, export as export_commands, generate,
+    analytics as analytics_commands, brand_voice as brand_voice_commands,
+    export as export_commands, generate, import as import_commands,
     license as license_commands, photos as photo_commands, property, settings,
 };
 use tauri::Manager;
@@ -62,6 +64,9 @@ pub fn run() {
             brand_voice_commands::delete_brand_voice,
             license_commands::validate_license_key,
             license_commands::check_license,
+            import_commands::import_properties_csv,
+            import_commands::get_csv_template,
+            analytics_commands::get_analytics_summary,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
