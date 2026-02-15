@@ -1,3 +1,4 @@
+pub mod analytics;
 pub mod brand_voice;
 pub mod listings;
 pub mod photos;

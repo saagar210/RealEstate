@@ -1,11 +1,17 @@
 use docx_rs::*;
+use std::fs;
 
 use crate::db::listings::Listing;
+use crate::db::photos::Photo;
 use crate::db::properties::Property;
 use crate::error::AppError;
 
-/// Generate a DOCX document for a property with its listings
-pub fn generate_docx(property: &Property, listings: &[Listing]) -> Result<Vec<u8>, AppError> {
+/// Generate a DOCX document for a property with its listings and photos
+pub fn generate_docx(
+    property: &Property,
+    listings: &[Listing],
+    photos: &[Photo],
+) -> Result<Vec<u8>, AppError> {
     let mut docx = Docx::new();
 
     // Property header
@@ -50,6 +56,43 @@ pub fn generate_docx(property: &Property, listings: &[Listing]) -> Result<Vec<u8
         docx = docx.add_paragraph(
             Paragraph::new().add_run(Run::new().add_text(&features.join(" • "))),
         );
+    }
+
+    // Photos section
+    if !photos.is_empty() {
+        docx = docx.add_paragraph(Paragraph::new());
+        docx = docx.add_paragraph(
+            Paragraph::new()
+                .add_run(Run::new().add_text("Property Photos").bold())
+                .style("Heading2"),
+        );
+
+        // Add up to 6 photos
+        for photo in photos.iter().take(6) {
+            if let Ok(image_bytes) = fs::read(&photo.original_path) {
+                // Create a Pic element with the image data
+                let pic = Pic::new(&image_bytes).size(4000000, 3000000); // Width x Height in EMUs (1" = 914400 EMUs)
+
+                docx = docx.add_paragraph(
+                    Paragraph::new().add_run(Run::new().add_image(pic)),
+                );
+
+                // Add caption if available
+                if let Some(ref caption) = photo.caption {
+                    if !caption.is_empty() {
+                        docx = docx.add_paragraph(
+                            Paragraph::new()
+                                .add_run(Run::new().add_text(caption).italic().size(18)), // 9pt font
+                        );
+                    }
+                }
+
+                docx = docx.add_paragraph(Paragraph::new()); // Spacer
+            } else {
+                eprintln!("Failed to read image file: {}", photo.original_path);
+                // Continue with other photos even if one fails
+            }
+        }
     }
 
     // Listings

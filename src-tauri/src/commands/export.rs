@@ -1,7 +1,7 @@
 use sqlx::SqlitePool;
 use tauri::State;
 
-use crate::db::{listings, properties};
+use crate::db::{listings, photos, properties};
 use crate::error::AppError;
 use crate::export::{docx, pdf};
 
@@ -19,10 +19,14 @@ pub async fn export_pdf(
         selected_listings.push(listing);
     }
 
-    let bytes =
-        tokio::task::spawn_blocking(move || pdf::generate_pdf(&property, &selected_listings))
-            .await
-            .map_err(|e| AppError::Export(format!("PDF generation task failed: {}", e)))??;
+    // Fetch photos for the property
+    let property_photos = photos::list(&db, &property_id).await?;
+
+    let bytes = tokio::task::spawn_blocking(move || {
+        pdf::generate_pdf(&property, &selected_listings, &property_photos)
+    })
+    .await
+    .map_err(|e| AppError::Export(format!("PDF generation task failed: {}", e)))??;
 
     Ok(bytes)
 }
@@ -41,10 +45,14 @@ pub async fn export_docx(
         selected_listings.push(listing);
     }
 
-    let bytes =
-        tokio::task::spawn_blocking(move || docx::generate_docx(&property, &selected_listings))
-            .await
-            .map_err(|e| AppError::Export(format!("DOCX generation task failed: {}", e)))??;
+    // Fetch photos for the property
+    let property_photos = photos::list(&db, &property_id).await?;
+
+    let bytes = tokio::task::spawn_blocking(move || {
+        docx::generate_docx(&property, &selected_listings, &property_photos)
+    })
+    .await
+    .map_err(|e| AppError::Export(format!("DOCX generation task failed: {}", e)))??;
 
     Ok(bytes)
 }

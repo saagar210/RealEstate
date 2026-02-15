@@ -65,7 +65,12 @@ pub async fn generate_listing(
         seo_keywords: args.seo_keywords.clone(),
     };
 
-    let client = ClaudeClient::new(api_key);
+    // Load AI model preference
+    let model = settings::get(&db, "ai_model")
+        .await
+        .unwrap_or_else(|_| "claude-sonnet-4-5-20250929".to_string());
+
+    let client = ClaudeClient::new(api_key, model);
 
     let result = listing_generator::generate_listing(
         &client,
@@ -142,7 +147,12 @@ pub async fn generate_social(
         None
     };
 
-    let client = ClaudeClient::new(api_key);
+    // Load AI model preference
+    let model = settings::get(&db, "ai_model")
+        .await
+        .unwrap_or_else(|_| "claude-sonnet-4-5-20250929".to_string());
+
+    let client = ClaudeClient::new(api_key, model);
 
     let result = social_generator::generate_social_posts(
         &client,
@@ -241,7 +251,12 @@ pub async fn generate_email(
         None
     };
 
-    let client = ClaudeClient::new(api_key);
+    // Load AI model preference
+    let model = settings::get(&db, "ai_model")
+        .await
+        .unwrap_or_else(|_| "claude-sonnet-4-5-20250929".to_string());
+
+    let client = ClaudeClient::new(api_key, model);
 
     let result = email_generator::generate_email(
         &client,

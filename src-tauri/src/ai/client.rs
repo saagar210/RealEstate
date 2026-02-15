@@ -2,8 +2,15 @@ use futures::StreamExt;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tauri::ipc::Channel;
+use tokio::time::{sleep, Duration};
 
 use crate::error::AppError;
+
+/// Maximum number of retries for API requests
+const MAX_RETRIES: u32 = 3;
+
+/// Initial backoff delay in milliseconds
+const INITIAL_BACKOFF_MS: u64 = 1000;
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase", tag = "event", content = "data")]
@@ -28,6 +35,7 @@ pub enum StreamEvent {
 pub struct ClaudeClient {
     client: Client,
     api_key: String,
+    model: String,
 }
 
 #[derive(Serialize)]
@@ -95,22 +103,55 @@ struct SseErrorDetail {
 }
 
 impl ClaudeClient {
-    pub fn new(api_key: String) -> Self {
+    pub fn new(api_key: String, model: String) -> Self {
         Self {
             client: Client::new(),
             api_key,
+            model,
         }
     }
 
-    /// Send a non-streaming request and return the full text response
+    /// Send a non-streaming request and return the full text response (with retry logic)
     pub async fn send_message(
         &self,
         system: &str,
         user_content: &str,
         max_tokens: u32,
     ) -> Result<(String, u32, u32), AppError> {
+        let mut attempt = 0;
+
+        loop {
+            attempt += 1;
+
+            let result = self
+                .send_message_attempt(system, user_content, max_tokens)
+                .await;
+
+            match result {
+                Ok(response) => return Ok(response),
+                Err(e) if attempt >= MAX_RETRIES => return Err(e),
+                Err(e) if is_retryable_error(&e) => {
+                    let backoff_ms = INITIAL_BACKOFF_MS * 2_u64.pow(attempt - 1);
+                    eprintln!(
+                        "API request failed (attempt {}/{}): {}. Retrying in {}ms...",
+                        attempt, MAX_RETRIES, e, backoff_ms
+                    );
+                    sleep(Duration::from_millis(backoff_ms)).await;
+                }
+                Err(e) => return Err(e), // Non-retryable error
+            }
+        }
+    }
+
+    /// Internal method: single attempt of non-streaming request
+    async fn send_message_attempt(
+        &self,
+        system: &str,
+        user_content: &str,
+        max_tokens: u32,
+    ) -> Result<(String, u32, u32), AppError> {
         let body = MessageRequest {
-            model: "claude-sonnet-4-5-20250929",
+            model: &self.model,
             max_tokens,
             stream: false,
             system,
@@ -129,15 +170,23 @@ impl ClaudeClient {
             .json(&body)
             .send()
             .await
-            .map_err(|e| AppError::Api(format!("Failed to send request: {}", e)))?;
+            .map_err(|e| AppError::from_reqwest_error(e))?;
 
         if !response.status().is_success() {
             let status = response.status();
             let text = response.text().await.unwrap_or_default();
-            return Err(AppError::Api(format!(
-                "API returned {} : {}",
-                status, text
-            )));
+
+            // Check for rate limit
+            if status.as_u16() == 429 {
+                return Err(AppError::ApiRateLimit(text));
+            }
+
+            // Check for overloaded
+            if status.as_u16() == 529 {
+                return Err(AppError::ApiOverloaded(text));
+            }
+
+            return Err(AppError::Api(format!("API returned {}: {}", status, text)));
         }
 
         let resp: serde_json::Value = response
@@ -164,7 +213,7 @@ impl ClaudeClient {
         channel: &Channel<StreamEvent>,
     ) -> Result<(String, u32, u32), AppError> {
         let body = MessageRequest {
-            model: "claude-sonnet-4-5-20250929",
+            model: &self.model,
             max_tokens,
             stream: true,
             system,
@@ -265,6 +314,16 @@ impl ClaudeClient {
         }
 
         Ok((full_text, input_tokens, output_tokens))
+    }
+}
+
+/// Determine if an error is retryable (network, rate limit, overloaded)
+fn is_retryable_error(error: &AppError) -> bool {
+    match error {
+        AppError::ApiRateLimit(_) => true,
+        AppError::ApiOverloaded(_) => true,
+        AppError::NetworkError(_) => true,
+        _ => false,
     }
 }
 

@@ -21,7 +21,12 @@ pub async fn create_brand_voice(
         ));
     }
 
-    let client = ClaudeClient::new(api_key);
+    // Load AI model preference
+    let model = settings::get(&db, "ai_model")
+        .await
+        .unwrap_or_else(|_| "claude-sonnet-4-5-20250929".to_string());
+
+    let client = ClaudeClient::new(api_key, model);
     let extracted_style = extract_voice(&client, &sample_listings).await?;
 
     let voice = brand_voice::create(

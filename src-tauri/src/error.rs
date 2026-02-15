@@ -11,8 +11,14 @@ pub enum AppError {
     #[error("API rate limit exceeded. Please wait a few minutes before generating again. Error: {0}")]
     ApiRateLimit(String),
 
+    #[error("Anthropic API is currently overloaded. Please wait a moment and try again. Error: {0}")]
+    ApiOverloaded(String),
+
     #[error("Failed to connect to Anthropic API. Please check your internet connection and try again. Error: {0}")]
     ApiConnectionError(String),
+
+    #[error("Network error occurred. Please check your internet connection and try again. Error: {0}")]
+    NetworkError(String),
 
     #[error("API request failed: {0}")]
     Api(String),
@@ -84,19 +90,19 @@ impl AppError {
         if err.is_timeout() {
             AppError::NetworkTimeout
         } else if err.is_connect() {
-            AppError::ApiConnectionError(err.to_string())
+            AppError::NetworkError(err.to_string())
         } else if err.is_status() {
             if let Some(status) = err.status() {
-                if status.as_u16() == 429 {
-                    AppError::ApiRateLimit(err.to_string())
-                } else {
-                    AppError::RequestFailed(format!("HTTP {}: {}", status, err))
+                match status.as_u16() {
+                    429 => AppError::ApiRateLimit(err.to_string()),
+                    529 => AppError::ApiOverloaded(err.to_string()),
+                    _ => AppError::RequestFailed(format!("HTTP {}: {}", status, err)),
                 }
             } else {
                 AppError::RequestFailed(err.to_string())
             }
         } else {
-            AppError::RequestFailed(err.to_string())
+            AppError::NetworkError(err.to_string())
         }
     }
 
@@ -104,13 +110,18 @@ impl AppError {
     pub fn is_network_error(&self) -> bool {
         matches!(
             self,
-            AppError::NetworkTimeout | AppError::ApiConnectionError(_)
+            AppError::NetworkTimeout | AppError::NetworkError(_) | AppError::ApiConnectionError(_)
         )
     }
 
     /// Check if this error is due to rate limiting
     pub fn is_rate_limit(&self) -> bool {
         matches!(self, AppError::ApiRateLimit(_))
+    }
+
+    /// Check if this error is due to API overload
+    pub fn is_overloaded(&self) -> bool {
+        matches!(self, AppError::ApiOverloaded(_))
     }
 }
 
