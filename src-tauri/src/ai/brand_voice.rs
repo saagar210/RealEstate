@@ -53,7 +53,10 @@ mod tests {
     #[test]
     fn test_validation_requires_two_samples() {
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let client = ClaudeClient::new("fake-key".to_string());
+        let client = ClaudeClient::new(
+            "fake-key".to_string(),
+            "claude-sonnet-4-5-20250929".to_string(),
+        );
         let result = rt.block_on(extract_voice(&client, &["single".to_string()]));
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();

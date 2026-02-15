@@ -29,15 +29,16 @@ pub async fn generate_listing(
     on_event: Channel<StreamEvent>,
 ) -> Result<(), AppError> {
     // Load property
-    let property = properties::get(&db, &args.property_id).await?;
+    let property = properties::get(&db, &args.property_id)
+        .await
+        .map_err(|_| AppError::PropertyNotFound(args.property_id.clone()))?;
 
     // Load API key
-    let api_key = settings::get(&db, "api_key").await?;
-    if api_key.is_empty() {
-        return Err(AppError::Config(
-            "No API key configured. Add your Anthropic API key in Settings.".to_string(),
-        ));
+    let api_key = settings::get(&db, "api_key").await.ok();
+    if api_key.is_none() || api_key.as_ref().unwrap().is_empty() {
+        return Err(AppError::MissingApiKey);
     }
+    let api_key = api_key.unwrap();
 
     // Load agent info
     let agent_info = AgentInfo {
@@ -64,7 +65,12 @@ pub async fn generate_listing(
         seo_keywords: args.seo_keywords.clone(),
     };
 
-    let client = ClaudeClient::new(api_key);
+    // Load AI model preference
+    let model = settings::get(&db, "ai_model")
+        .await
+        .unwrap_or_else(|_| "claude-sonnet-4-5-20250929".to_string());
+
+    let client = ClaudeClient::new(api_key, model);
 
     let result = listing_generator::generate_listing(
         &client,
@@ -112,15 +118,16 @@ pub async fn generate_social(
     on_event: Channel<StreamEvent>,
 ) -> Result<(), AppError> {
     // Load property
-    let property = properties::get(&db, &args.property_id).await?;
+    let property = properties::get(&db, &args.property_id)
+        .await
+        .map_err(|_| AppError::PropertyNotFound(args.property_id.clone()))?;
 
     // Load API key
-    let api_key = settings::get(&db, "api_key").await?;
-    if api_key.is_empty() {
-        return Err(AppError::Config(
-            "No API key configured. Add your Anthropic API key in Settings.".to_string(),
-        ));
+    let api_key = settings::get(&db, "api_key").await.ok();
+    if api_key.is_none() || api_key.as_ref().unwrap().is_empty() {
+        return Err(AppError::MissingApiKey);
     }
+    let api_key = api_key.unwrap();
 
     // Load agent info
     let agent_info = AgentInfo {
@@ -140,7 +147,12 @@ pub async fn generate_social(
         None
     };
 
-    let client = ClaudeClient::new(api_key);
+    // Load AI model preference
+    let model = settings::get(&db, "ai_model")
+        .await
+        .unwrap_or_else(|_| "claude-sonnet-4-5-20250929".to_string());
+
+    let client = ClaudeClient::new(api_key, model);
 
     let result = social_generator::generate_social_posts(
         &client,
@@ -210,15 +222,16 @@ pub async fn generate_email(
     on_event: Channel<StreamEvent>,
 ) -> Result<(), AppError> {
     // Load property
-    let property = properties::get(&db, &args.property_id).await?;
+    let property = properties::get(&db, &args.property_id)
+        .await
+        .map_err(|_| AppError::PropertyNotFound(args.property_id.clone()))?;
 
     // Load API key
-    let api_key = settings::get(&db, "api_key").await?;
-    if api_key.is_empty() {
-        return Err(AppError::Config(
-            "No API key configured. Add your Anthropic API key in Settings.".to_string(),
-        ));
+    let api_key = settings::get(&db, "api_key").await.ok();
+    if api_key.is_none() || api_key.as_ref().unwrap().is_empty() {
+        return Err(AppError::MissingApiKey);
     }
+    let api_key = api_key.unwrap();
 
     // Load agent info
     let agent_info = AgentInfo {
@@ -238,7 +251,12 @@ pub async fn generate_email(
         None
     };
 
-    let client = ClaudeClient::new(api_key);
+    // Load AI model preference
+    let model = settings::get(&db, "ai_model")
+        .await
+        .unwrap_or_else(|_| "claude-sonnet-4-5-20250929".to_string());
+
+    let client = ClaudeClient::new(api_key, model);
 
     let result = email_generator::generate_email(
         &client,

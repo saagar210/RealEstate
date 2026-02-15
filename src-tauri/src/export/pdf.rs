@@ -1,14 +1,20 @@
-use genpdf::elements::{Break, Paragraph};
+use genpdf::elements::{Break, Image, Paragraph};
 use genpdf::fonts;
-use genpdf::style::Style;
-use genpdf::{Document, Element, SimplePageDecorator};
+use genpdf::style::{Color, Style};
+use genpdf::{Document, Element, Mm, SimplePageDecorator};
+use image::DynamicImage;
 
 use crate::db::listings::Listing;
+use crate::db::photos::Photo;
 use crate::db::properties::Property;
 use crate::error::AppError;
 
-/// Generate a PDF marketing package for a property with its listings
-pub fn generate_pdf(property: &Property, listings: &[Listing]) -> Result<Vec<u8>, AppError> {
+/// Generate a PDF marketing package for a property with its listings and photos
+pub fn generate_pdf(
+    property: &Property,
+    listings: &[Listing],
+    photos: &[Photo],
+) -> Result<Vec<u8>, AppError> {
     // Use built-in Helvetica font (always available)
     let font_family =
         fonts::from_files("", "Helvetica", None).unwrap_or_else(|_| {
@@ -82,6 +88,55 @@ pub fn generate_pdf(property: &Property, listings: &[Listing]) -> Result<Vec<u8>
         doc.push(Break::new(0.5));
     }
 
+    // Photos section
+    if !photos.is_empty() {
+        doc.push(Break::new(1.0));
+        doc.push(
+            Paragraph::new("Property Photos")
+                .styled(Style::new().bold().with_font_size(14)),
+        );
+        doc.push(Break::new(0.5));
+
+        // Add up to 6 photos (3x2 grid layout)
+        for (i, photo) in photos.iter().take(6).enumerate() {
+            match load_and_resize_image(&photo.original_path, 400) {
+                Ok(image_data) => {
+                    // Add the image
+                    match Image::from_dynamic_image(&image_data) {
+                        Ok(img) => {
+                            doc.push(img.with_scale(genpdf::Scale::new(0.5, 0.5)));
+
+                            // Add caption if available
+                            if let Some(ref caption) = photo.caption {
+                                if !caption.is_empty() {
+                                    doc.push(
+                                        Paragraph::new(caption)
+                                            .styled(Style::new().with_color(Color::Rgb(100, 100, 100)).with_font_size(9)),
+                                    );
+                                }
+                            }
+
+                            // Add spacing between photos
+                            if i < photos.len() - 1 {
+                                doc.push(Break::new(0.5));
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to add image to PDF: {}", e);
+                            // Continue with other photos even if one fails
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Failed to load image {}: {}", photo.original_path, e);
+                    // Continue with other photos even if one fails
+                }
+            }
+        }
+
+        doc.push(Break::new(1.0));
+    }
+
     // Listings
     for (i, listing) in listings.iter().enumerate() {
         doc.push(Break::new(1.0));
@@ -133,6 +188,25 @@ fn format_price_dollars(cents: i64) -> String {
         result.insert(0, *c);
     }
     result
+}
+
+/// Load an image from disk and resize it to fit within max_width pixels
+fn load_and_resize_image(path: &str, max_width: u32) -> Result<DynamicImage, AppError> {
+    // Load image
+    let img = image::open(path)
+        .map_err(|e| AppError::Export(format!("Failed to load image {}: {}", path, e)))?;
+
+    // Calculate new dimensions maintaining aspect ratio
+    let (width, height) = img.dimensions();
+    if width <= max_width {
+        return Ok(img);
+    }
+
+    let scale = max_width as f32 / width as f32;
+    let new_height = (height as f32 * scale) as u32;
+
+    // Resize using Lanczos3 for high quality
+    Ok(img.resize(max_width, new_height, image::imageops::FilterType::Lanczos3))
 }
 
 #[cfg(test)]
