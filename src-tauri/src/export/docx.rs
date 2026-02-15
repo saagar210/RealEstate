@@ -71,7 +71,9 @@ pub fn generate_docx(
         for photo in photos.iter().take(6) {
             if let Ok(image_bytes) = fs::read(&photo.original_path) {
                 // Create a Pic element with the image data
-                let pic = Pic::new(&image_bytes).size(4000000, 3000000); // Width x Height in EMUs (1" = 914400 EMUs)
+                const IMAGE_WIDTH_EMU: u32 = 4_000_000; // ~4.4 inches
+                const IMAGE_HEIGHT_EMU: u32 = 3_000_000; // ~3.3 inches
+                let pic = Pic::new(&image_bytes).size(IMAGE_WIDTH_EMU, IMAGE_HEIGHT_EMU);
 
                 docx = docx.add_paragraph(
                     Paragraph::new().add_run(Run::new().add_image(pic)),
