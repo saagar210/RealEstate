@@ -45,6 +45,18 @@ Run the desktop app (Tauri + Vite):
 pnpm tauri dev
 ```
 
+Run the desktop app in lean mode (temporary build caches, auto-clean on exit):
+
+```sh
+pnpm dev:lean
+```
+
+Optional: change the lean dev port if `1420` is busy:
+
+```sh
+LEAN_DEV_PORT=1422 pnpm dev:lean
+```
+
 Run tests:
 
 ```sh
@@ -57,6 +69,28 @@ Build:
 pnpm build
 pnpm tauri build
 ```
+
+Cleanup commands:
+
+```sh
+# remove heavy build artifacts only (keeps dependencies for speed)
+pnpm clean:heavy
+
+# remove all reproducible local caches (including node_modules)
+pnpm clean:full
+```
+
+Check current heavy-directory sizes:
+
+```sh
+pnpm size:report
+```
+
+### Normal vs Lean Dev
+
+- Normal dev (`pnpm tauri dev`): fastest incremental rebuilds, but writes caches/artifacts into the repo (`src-tauri/target`, `node_modules/.vite`).
+- Lean dev (`pnpm dev:lean`): redirects Rust and Vite build caches to temporary directories and removes them automatically when the process exits.
+- Tradeoff: lean mode uses less persistent disk in the project but usually has slower startup and less incremental compile reuse between runs.
 
 ## Project Layout
 

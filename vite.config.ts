@@ -5,10 +5,15 @@ import path from "path";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
+// @ts-expect-error process is a nodejs global
+const viteCacheDir = process.env.VITE_CACHE_DIR;
+// @ts-expect-error process is a nodejs global
+const viteDevPort = Number(process.env.VITE_DEV_PORT || "1420");
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
+  cacheDir: viteCacheDir || "node_modules/.vite",
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -16,7 +21,7 @@ export default defineConfig(async () => ({
   },
   clearScreen: false,
   server: {
-    port: 1420,
+    port: viteDevPort,
     strictPort: true,
     host: host || false,
     hmr: host
