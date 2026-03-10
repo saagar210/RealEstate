@@ -1,0 +1,44 @@
+name: quality-gates
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop, "codex/**"]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.31.0
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Policy checks
+        run: node scripts/ci/require-tests-and-docs.mjs
+
+      - name: Frontend coverage
+        run: pnpm test:coverage
+
+      - name: Verify commands
+        run: bash .codex/scripts/run_verify_commands.sh
+
+      - name: Upload test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts
+          path: |
+            playwright-report/
+            test-results/
+            coverage/
