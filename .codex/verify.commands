@@ -1,5 +1,13 @@
 # codex-os-managed
+pnpm install --frozen-lockfile
 pnpm git:guard:all
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
 pnpm perf:bundle
 pnpm perf:build
 pnpm perf:assets
+pnpm perf:memory
+pnpm check:rust
+pnpm test:rust:integration
