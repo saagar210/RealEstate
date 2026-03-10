@@ -243,11 +243,9 @@ mod tests {
 
             assert_eq!(prop_listings.len(), 2);
             assert!(prop_listings.iter().any(|l| l.generation_type == "listing"));
-            assert!(
-                prop_listings
-                    .iter()
-                    .any(|l| l.generation_type == "social_instagram")
-            );
+            assert!(prop_listings
+                .iter()
+                .any(|l| l.generation_type == "social_instagram"));
         }
     }
 
