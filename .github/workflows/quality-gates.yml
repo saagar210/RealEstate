@@ -13,6 +13,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libgdk-pixbuf2.0-dev \
+            libpango1.0-dev \
+            libcairo2-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev \
+            libwebkit2gtk-4.1-dev
+
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -20,6 +32,9 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10.31.0
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
